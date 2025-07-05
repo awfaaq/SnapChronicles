@@ -1,4 +1,6 @@
+cffi==1.17.1
 numpy==2.3.1
 PyAudioWPatch==0.2.12.7
-pywin32==310
-Pillow==11.3.0
+pycparser==2.22
+sounddevice==0.5.2
+soundfile==0.13.1
