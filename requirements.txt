@@ -4,3 +4,30 @@ PyAudioWPatch==0.2.12.7
 pycparser==2.22
 sounddevice==0.5.2
 soundfile==0.13.1
+
+# Frameworks de base
+numpy
+pillow
+
+# Capture Audio/Écran (spécifique à Windows)
+pyaudiowpatch
+pywin32
+
+# OCR
+pytesseract
+
+# ASR
+openai-whisper
+# Pour la compatibilité avec Whisper, si besoin
+setuptools-rust
+
+# LLM & Embeddings
+llama-cpp-python
+sentence-transformers
+transformers
+torch
+faiss-cpu 
+groq
+
+# CLI 
+click
