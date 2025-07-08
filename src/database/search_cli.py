@@ -24,7 +24,18 @@ src_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if src_root not in sys.path:
     sys.path.insert(0, src_root)
 
-from database.db_handler import search_similar_events, get_vector_stats, db_exists
+# Core DB helpers
+from database.db_handler import (
+    search_similar_events,
+    get_vector_stats,
+    db_exists,
+)
+
+# Query expansion with local LLM (Ollama)
+try:
+    from llm.query_expander import expand_query
+except Exception as _qe_err:  # LLM not available – fallback silently
+    expand_query = None  # type: ignore
 
 
 def format_timestamp(timestamp):
@@ -181,17 +192,24 @@ def main():
                 print("⚠️ Please enter a search query or 'q' to quit")
                 continue
             
-            # Perform search
-            print(f"\n🧠 Searching for: '{query}'...")
+            # Perform LLM-based expansion (optional)
+            expanded_phrases = []
+            if expand_query is not None:
+                try:
+                    expanded_phrases = expand_query(query, max_tokens=128)
+                except Exception as e:
+                    print(f"⚠️  Query expansion failed – continuing without it: {e}")
+
+            # Log what we're about to search
+            print(f"\n🧠 Searching for: '{query}'")
+            if expanded_phrases:
+                print("   🔎 Additional generated requests:")
+                for p in expanded_phrases:
+                    print(f"     • {p}")
             
-            try:
-                # Search with top 4 results as requested
-                results = search_similar_events(query, top_k=4)
-                display_results(results, query)
-                
-            except Exception as e:
-                print(f"❌ Search error: {e}")
-                print("💡 Try a different query or check if the vectorization system is working.")
+            # Run search (db handler now internally reuses expansion, but we pass original)
+            results = search_similar_events(query, top_k=6)
+            display_results(results, query)
             
             print("-" * 80)
     

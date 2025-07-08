@@ -121,19 +121,58 @@ def get_all_events():
     return events
 
 def search_similar_events(query_text: str, top_k: int = 5):
-    """Recherche des événements similaires en utilisant la vectorisation."""
+    """Recherche des événements similaires.
+
+    Étapes :
+    1. On lance d'abord une recherche sur la question originale.
+    2. On appelle un LLM local (via *llama-cpp*) pour générer d'autres requêtes.
+       Le modèle est invité à sortir **uniquement** des requêtes, une par ligne.
+    3. Chaque requête est vectorisée puis recherchée dans l'index FAISS.
+    4. On agrège les résultats en gardant la meilleure similarité pour chaque *event*.
+
+    Cela améliore le rappel par rapport à la simple question initiale.
+    """
+
     vector_handler = get_vector_handler()
     if not vector_handler:
         print("⚠️ Vector handler non disponible - recherche vectorielle impossible")
         return []
-    
+
+    # 1) Ensemble de requêtes : question de l'utilisateur + requêtes LLM (si dispo)
+    queries: list[str] = [query_text]
+
     try:
-        results = vector_handler.search_similar(query_text, top_k)
-        print(f"🔍 Trouvé {len(results)} résultats similaires pour: '{query_text}'")
-        return results
-    except Exception as e:
-        print(f"❌ Erreur lors de la recherche vectorielle: {e}")
-        return []
+        from llm.query_expander import expand_query
+        extra_phrases = expand_query(query_text)
+        if extra_phrases:
+            print(f"🧠 LLM a généré {len(extra_phrases)} requêtes supplémentaires pour la recherche")
+            queries.extend(extra_phrases)
+    except Exception as llm_err:
+        print(f"⚠️ Expansion de requête via LLM impossible : {llm_err}")
+
+    # 2) Lancer la recherche pour chaque requête et agréger
+    aggregated: dict[int, dict] = {}
+
+    for q in queries:
+        try:
+            partial_results = vector_handler.search_similar(q, top_k)
+            for res in partial_results:
+                eid = res['event_id']
+                # Garder la meilleure similarité (plus petite distance) par événement
+                if eid not in aggregated or res['similarity_score'] < aggregated[eid]['similarity_score']:
+                    aggregated[eid] = res
+        except Exception as e:
+            print(f"⚠️ Erreur de recherche pour la requête '{q}': {e}")
+
+    # 3) Transformer en liste triée par similarité croissante
+    results = sorted(aggregated.values(), key=lambda r: r['similarity_score'])
+
+    if results:
+        print(f"🔍 Trouvé {len(results)} résultats (après agrégation) pour: '{query_text}'")
+    else:
+        print(f"❌ Aucun résultat trouvé pour: '{query_text}'")
+
+    return results[:top_k]
 
 def get_vector_stats():
     """Récupère les statistiques sur les vecteurs stockés."""
