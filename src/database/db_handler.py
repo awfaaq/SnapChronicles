@@ -22,13 +22,13 @@ def get_vector_handler():
     return _vector_handler if _vector_handler is not False else None
 
 def db_exists():
-    """Vérifie l'existence de la base de données."""
+    """Check if the database exists."""
     return os.path.exists(DB_PATH)
 
 def init_db():
-    """Crée la table des événements si elle n'existe pas."""
+    """Create the events table if it does not exist."""
     if not db_exists():
-        print(f"Création de la base de données : {DB_PATH}")
+        print(f"Creating database: {DB_PATH}")
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute('''
@@ -41,13 +41,13 @@ def init_db():
             media_path   TEXT
         )
     ''')
-    # Créer un index sur timestamp pour optimiser les requêtes
+    # Create an index on timestamp to optimize queries
     c.execute('CREATE INDEX IF NOT EXISTS idx_timestamp ON events(timestamp)')
     conn.commit()
     conn.close()
 
 def store_event(timestamp: int, source_type: str, content: str | None = None, vectorized: bool = False, media_path: str | None = None, auto_vectorize: bool = True):
-    """Stocke un événement dans la base de données et le vectorise automatiquement si possible."""
+    """Store an event in the database and automatically vectorize it if possible."""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute(
@@ -60,9 +60,9 @@ def store_event(timestamp: int, source_type: str, content: str | None = None, ve
     conn.close()
     
     if event_id is None:
-        raise RuntimeError("Échec de récupération de l'ID de l'événement après insertion")
+        raise RuntimeError("Failed to retrieve event ID after insertion")
     
-    print(f"💾 Événement stocké dans la base de données pour le timestamp {timestamp} (type: {source_type}, ID: {event_id})")
+    print(f"💾 Event stored in the database for timestamp {timestamp} (type: {source_type}, ID: {event_id})")
     
     # Automatically vectorize text content if available and requested
     if auto_vectorize and content and content.strip() and not vectorized:
@@ -71,18 +71,18 @@ def store_event(timestamp: int, source_type: str, content: str | None = None, ve
             try:
                 vector_id = vector_handler.vectorize_and_store(event_id, content)
                 if vector_id:
-                    print(f"🧠 Contenu vectorisé automatiquement (vector_id: {vector_id})")
+                    print(f"🧠 Content automatically vectorized (vector_id: {vector_id})")
                 else:
-                    print(f"⚠️ Échec de la vectorisation pour l'événement {event_id}")
+                    print(f"⚠️ Vectorization failed for event {event_id}")
             except Exception as e:
-                print(f"❌ Erreur lors de la vectorisation pour l'événement {event_id}: {e}")
+                print(f"❌ Error during vectorization for event {event_id}: {e}")
         else:
-            print(f"⚠️ Vector handler non disponible - vectorisation ignorée pour l'événement {event_id}")
+            print(f"⚠️ Vector handler not available - vectorization skipped for event {event_id}")
     
     return event_id
 
 def get_event_by_id(event_id: int):
-    """Récupère un événement par son ID."""
+    """Retrieve an event by its ID."""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute('SELECT * FROM events WHERE id = ?', (event_id,))
@@ -101,7 +101,7 @@ def get_event_by_id(event_id: int):
     return None
 
 def get_all_events():
-    """Récupère tous les événements de la base de données."""
+    """Retrieve all events from the database."""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute('SELECT * FROM events ORDER BY timestamp DESC')
@@ -121,39 +121,39 @@ def get_all_events():
     return events
 
 def search_similar_events(query_text: str, top_k: int = 5):
-    """Recherche des événements similaires en utilisant la vectorisation."""
+    """Search for similar events using vectorization."""
     vector_handler = get_vector_handler()
     if not vector_handler:
-        print("⚠️ Vector handler non disponible - recherche vectorielle impossible")
+        print("⚠️ Vector handler not available - vector search not possible")
         return []
     
     try:
         results = vector_handler.search_similar(query_text, top_k)
-        print(f"🔍 Trouvé {len(results)} résultats similaires pour: '{query_text}'")
+        print(f"🔍 Found {len(results)} similar results for: '{query_text}'")
         return results
     except Exception as e:
-        print(f"❌ Erreur lors de la recherche vectorielle: {e}")
+        print(f"❌ Error during vector search: {e}")
         return []
 
 def get_vector_stats():
-    """Récupère les statistiques sur les vecteurs stockés."""
+    """Retrieve statistics about stored vectors."""
     vector_handler = get_vector_handler()
     if not vector_handler:
-        print("⚠️ Vector handler non disponible")
+        print("⚠️ Vector handler not available")
         return None
     
     try:
         stats = vector_handler.get_vector_stats()
         return stats
     except Exception as e:
-        print(f"❌ Erreur lors de la récupération des statistiques: {e}")
+        print(f"❌ Error retrieving statistics: {e}")
         return None
 
 def vectorize_existing_events(force_revectorize: bool = False):
-    """Vectorise les événements existants qui ne l'ont pas encore été."""
+    """Vectorize existing events that have not yet been vectorized."""
     vector_handler = get_vector_handler()
     if not vector_handler:
-        print("⚠️ Vector handler non disponible")
+        print("⚠️ Vector handler not available")
         return
     
     conn = sqlite3.connect(DB_PATH)
@@ -168,7 +168,7 @@ def vectorize_existing_events(force_revectorize: bool = False):
     events_to_vectorize = c.fetchall()
     conn.close()
     
-    print(f"🧠 Vectorisation de {len(events_to_vectorize)} événements...")
+    print(f"🧠 Vectorizing {len(events_to_vectorize)} events...")
     
     vectorized_count = 0
     for event_id, content in events_to_vectorize:
@@ -176,10 +176,11 @@ def vectorize_existing_events(force_revectorize: bool = False):
             vector_id = vector_handler.vectorize_and_store(event_id, content)
             if vector_id:
                 vectorized_count += 1
-                print(f"✅ Événement {event_id} vectorisé (vector_id: {vector_id})")
+                print(f"✅ Event {event_id} vectorized (vector_id: {vector_id})")
             else:
-                print(f"⚠️ Échec de la vectorisation pour l'événement {event_id}")
+                print(f"⚠️ Vectorization failed for event {event_id}")
         except Exception as e:
-            print(f"❌ Erreur pour l'événement {event_id}: {e}")
+            print(f"❌ Error for event {event_id}: {e}")
     
-    print(f"🎉 Vectorisation terminée: {vectorized_count}/{len(events_to_vectorize)} événements traités")
+    print(f"🎉 Vectorization complete: {vectorized_count}/{len(events_to_vectorize)} events processed")
+
