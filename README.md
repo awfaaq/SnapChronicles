@@ -96,7 +96,7 @@ python capture_screen_text_in_continue.py path/to/screenshot.png
 
 ---
 
-**SnapChronicles empowers you to capture, extract, and organize information from the digital world—simply, locally, and securely.**
+**SnapChronicles empowers you to capture, extract, and organize information from the digital world simply, locally, and securely.**
 
 ---
 
