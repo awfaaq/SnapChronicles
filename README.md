@@ -96,12 +96,6 @@ python capture_screen_text_in_continue.py path/to/screenshot.png
 
 ---
 
-## Credits
-
-Developed by [Daniel Ashraful](https://github.com/awfaaq), [Mohammad-Habib Javaid](https://github.com/mhjd), [Harith Proietti](https://github.com/HarithProietti)
-
----
-
 **SnapChronicles empowers you to capture, extract, and organize information from the digital world—simply, locally, and securely.**
 
 ---
