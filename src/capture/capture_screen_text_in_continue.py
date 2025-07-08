@@ -13,6 +13,7 @@ if src_root not in sys.path:
 
 # Now we can import as if we're at src root
 from ocr.ocr import ocr
+from database.db_handler import init_db, store_event
 
 # Handle DPI scaling issues
 ctypes.windll.user32.SetProcessDPIAware()
@@ -20,14 +21,16 @@ ctypes.windll.user32.SetProcessDPIAware()
 # Create images_screened folder if it doesn't exist
 os.makedirs('images_screened', exist_ok=True)
 
-# Initialize the log file
-log_file = 'log_image.md'
-with open(log_file, 'w', encoding='utf-8') as f:
-    f.write(f"# Screenshot OCR Log\n\n")
-    f.write(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+# Initialize the database
+print("🔧 Initializing database...")
+init_db()
+
+# Variable to track the last saved OCR text to avoid duplicates
+last_saved_text = None
 
 time_to_run = 10
 print(f"Starting screenshot capture for {time_to_run} seconds...")
+print(f"📊 OCR results will be saved to the database (duplicates will be skipped)")
 start_time = time.time()
 screenshot_count = 0
 
@@ -61,26 +64,47 @@ while screenshot_count < time_to_run:  # Take exactly time_to_run screenshots
             print(f"Performing OCR on {filename}...")
             extracted_text = ocr(filename)
             
-            # Append to log file
-            with open(log_file, 'a', encoding='utf-8') as f:
-                f.write(f"## Screenshot {screenshot_count}: {filename}\n")
-                f.write(f"**Timestamp:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-                f.write("**Extracted Text:**\n")
-                f.write("```\n")
-                f.write(extracted_text.strip() if extracted_text.strip() else "(No text detected)")
-                f.write("\n```\n\n")
-                f.write("---\n\n")
+            # Clean and prepare the text
+            cleaned_text = extracted_text.strip() if extracted_text.strip() else "(No text detected)"
             
-            print(f"OCR completed for screenshot {screenshot_count}")
+            # Check if this text is different from the last saved text
+            if last_saved_text is None or cleaned_text != last_saved_text:
+                # Get Unix timestamp
+                unix_timestamp = int(time.time())
+                
+                # Store in database
+                store_event(
+                    timestamp=unix_timestamp,
+                    source_type="ocr",
+                    content=cleaned_text,
+                    vectorized=False,
+                    media_path=filename
+                )
+                
+                # Update the last saved text
+                last_saved_text = cleaned_text
+                
+                print(f"✅ OCR completed and saved to database for screenshot {screenshot_count}")
+            else:
+                print(f"🔄 OCR text identical to previous screenshot - skipped database save for screenshot {screenshot_count}")
             
         except Exception as ocr_error:
-            print(f"OCR error for screenshot {screenshot_count}: {ocr_error}")
-            # Log the error
-            with open(log_file, 'a', encoding='utf-8') as f:
-                f.write(f"## Screenshot {screenshot_count}: {filename}\n")
-                f.write(f"**Timestamp:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-                f.write(f"**OCR Error:** {ocr_error}\n\n")
-                f.write("---\n\n")
+            print(f"❌ OCR error for screenshot {screenshot_count}: {ocr_error}")
+            
+            # For errors, we always save them
+            # because errors are important to track
+            unix_timestamp = int(time.time())
+            error_message = f"OCR Error: {str(ocr_error)}"
+            
+            store_event(
+                timestamp=unix_timestamp,
+                source_type="ocr",
+                content=error_message,
+                vectorized=False,
+                media_path=filename
+            )
+            
+            # Don't update last_saved_text for errors
         
     except Exception as e:
         print(f"Error taking screenshot {screenshot_count + 1}: {e}")
@@ -98,26 +122,46 @@ while screenshot_count < time_to_run:  # Take exactly time_to_run screenshots
                 print(f"Performing OCR on {filename}...")
                 extracted_text = ocr(filename)
                 
-                # Append to log file
-                with open(log_file, 'a', encoding='utf-8') as f:
-                    f.write(f"## Screenshot {screenshot_count}: {filename}\n")
-                    f.write(f"**Timestamp:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-                    f.write("**Extracted Text:**\n")
-                    f.write("```\n")
-                    f.write(extracted_text.strip() if extracted_text.strip() else "(No text detected)")
-                    f.write("\n```\n\n")
-                    f.write("---\n\n")
+                # Clean and prepare the text
+                cleaned_text = extracted_text.strip() if extracted_text.strip() else "(No text detected)"
                 
-                print(f"OCR completed for screenshot {screenshot_count}")
+                # Check if this text is different from the last saved text
+                if last_saved_text is None or cleaned_text != last_saved_text:
+                    # Get Unix timestamp
+                    unix_timestamp = int(time.time())
+                    
+                    # Store in database
+                    store_event(
+                        timestamp=unix_timestamp,
+                        source_type="ocr",
+                        content=cleaned_text,
+                        vectorized=False,
+                        media_path=filename
+                    )
+                    
+                    # Update the last saved text
+                    last_saved_text = cleaned_text
+                    
+                    print(f"✅ OCR completed and saved to database for screenshot {screenshot_count}")
+                else:
+                    print(f"🔄 OCR text identical to previous screenshot - skipped database save for screenshot {screenshot_count}")
                 
             except Exception as ocr_error:
-                print(f"OCR error for screenshot {screenshot_count}: {ocr_error}")
-                # Log the error
-                with open(log_file, 'a', encoding='utf-8') as f:
-                    f.write(f"## Screenshot {screenshot_count}: {filename}\n")
-                    f.write(f"**Timestamp:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-                    f.write(f"**OCR Error:** {ocr_error}\n\n")
-                    f.write("---\n\n")
+                print(f"❌ OCR error for screenshot {screenshot_count}: {ocr_error}")
+                
+                # For errors, we always save them
+                unix_timestamp = int(time.time())
+                error_message = f"OCR Error: {str(ocr_error)}"
+                
+                store_event(
+                    timestamp=unix_timestamp,
+                    source_type="ocr",
+                    content=error_message,
+                    vectorized=False,
+                    media_path=filename
+                )
+                
+                # Don't update last_saved_text for errors
             
         except Exception as e2:
             print(f"Failed to take screenshot: {e2}")
@@ -128,10 +172,6 @@ while screenshot_count < time_to_run:  # Take exactly time_to_run screenshots
     if sleep_time > 0:
         time.sleep(sleep_time)
 
-print(f"Capture complete! Saved {screenshot_count} screenshots in 'images_screened' folder.")
-print(f"OCR results saved to '{log_file}'")
-
-# Add completion timestamp to log
-with open(log_file, 'a', encoding='utf-8') as f:
-    f.write(f"**Completed at:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-    f.write(f"**Total screenshots processed:** {screenshot_count}\n")
+print(f"🎉 Capture complete! Processed {screenshot_count} screenshots.")
+print(f"📊 OCR results saved to database (snap.db) - duplicates were automatically skipped")
+print(f"📁 Screenshots saved in 'images_screened' folder")
