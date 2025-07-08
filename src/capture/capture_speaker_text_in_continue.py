@@ -15,9 +15,10 @@ import os
 import sys
 from pathlib import Path
 
-# Add the parent directory to the path to import ASR
+# Add the parent directory to the path to import ASR and database
 sys.path.append(str(Path(__file__).parent.parent))
 from asr.asr import WhisperASR
+from database.db_handler import init_db, store_event
 
 class ContinuousRecorderWithTranscription:
     def __init__(self, segment_duration=15, language="fr", model_size="base"):
@@ -34,6 +35,10 @@ class ContinuousRecorderWithTranscription:
         # Initialize ASR
         print(f"🤖 Initializing ASR with model: {model_size}")
         self.asr = WhisperASR(model_size)
+        
+        # Initialize database
+        print("🔧 Initializing database...")
+        init_db()
         
         # Create the session folder with timestamp
         self.session_timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -52,6 +57,7 @@ class ContinuousRecorderWithTranscription:
             f.write(f"**Started:** {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"**Language:** {self.language}\n")
             f.write(f"**Segment Duration:** {self.segment_duration}s\n")
+            f.write("**Database:** Transcriptions will be saved to database\n")
             f.write("\n---\n\n")
         
     def setup_audio(self):
@@ -131,12 +137,38 @@ class ContinuousRecorderWithTranscription:
             # Log to markdown file
             self.log_transcription(filepath, segment_number, timestamp, text)
             
-            print(f"✅ Segment {segment_number} transcribed")
+            # Save to database
+            self.save_transcription_to_db(filepath, text)
+            
+            print(f"✅ Segment {segment_number} transcribed and saved to database")
             
         except Exception as e:
             print(f"❌ Transcription error for segment {segment_number}: {e}")
             # Log error to file
             self.log_transcription(filepath, segment_number, timestamp, f"[ERROR: {str(e)}]")
+            
+            # Save error to database as well
+            self.save_transcription_to_db(filepath, f"Transcription Error: {str(e)}")
+    
+    def save_transcription_to_db(self, filepath, text):
+        """Save transcription to database"""
+        try:
+            # Get Unix timestamp
+            unix_timestamp = int(time.time())
+            
+            # Clean the text
+            cleaned_text = text.strip() if text.strip() else "(No speech detected)"
+            
+            # Store in database (will be automatically vectorized)
+            store_event(
+                timestamp=unix_timestamp,
+                source_type="transcription",
+                content=cleaned_text,
+                media_path=filepath
+            )
+            
+        except Exception as e:
+            print(f"❌ Database save error: {e}")
     
     def log_transcription(self, filepath, segment_number, timestamp, text):
         """Log transcription to markdown file"""
@@ -206,6 +238,7 @@ class ContinuousRecorderWithTranscription:
         print(f"🌐 Language: {self.language}")
         print(f"📁 Output folder: {self.output_folder}")
         print(f"📝 Log file: {self.log_file}")
+        print(f"🗄️ Database: Transcriptions saved to snap.db")
         print("⏹️  Press Ctrl+C to stop")
         print("=" * 60)
         
@@ -299,8 +332,9 @@ class ContinuousRecorderWithTranscription:
             print(f"📊 Summary: {len(segment_files)} segments recorded and transcribed")
             print(f"📁 Files saved in: {self.output_folder}")
             print(f"📝 Transcriptions logged in: {self.log_file}")
+            print(f"🗄️ Database: All transcriptions saved to snap.db")
         except:
-            print(f"📊 Session completed - Check {self.output_folder} and {self.log_file}")
+            print(f"📊 Session completed - Check {self.output_folder}, {self.log_file}, and snap.db")
 
 
 def main():
