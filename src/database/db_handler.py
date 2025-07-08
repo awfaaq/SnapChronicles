@@ -4,6 +4,12 @@ import os
 from datetime import datetime
 from typing import Optional
 
+# Import types
+from typing import Literal
+
+# LLM provider type
+LLMProvider = Literal["groq", "ollama"]
+
 DB_PATH = 'snap.db'
 
 # Import vector handler (will be lazily loaded)
@@ -120,17 +126,21 @@ def get_all_events():
         })
     return events
 
-def search_similar_events(query_text: str, top_k: int = 5):
+def search_similar_events(query_text: str, top_k: int = 5, expanded_queries: Optional[list[str]] = None):
     """Search for similar events.
 
     Steps:
     1. First launch a search on the original question.
-    2. Call a local LLM (via *llama-cpp*) to generate other queries.
-       The model is prompted to output **only** queries, one per line.
+    2. If expanded_queries are provided, search those as well.
     3. Each query is vectorized then searched in the FAISS index.
     4. We aggregate results keeping the best similarity for each *event*.
 
     This improves recall compared to the simple initial question.
+    
+    Args:
+        query_text: The main search query
+        top_k: Number of results to return
+        expanded_queries: Additional queries to search (pre-generated)
     """
 
     vector_handler = get_vector_handler()
@@ -138,17 +148,11 @@ def search_similar_events(query_text: str, top_k: int = 5):
         print("⚠️ Vector handler not available - vector search impossible")
         return []
 
-    # 1) Set of queries: user question + LLM queries (if available)
+    # 1) Set of queries: user question + expanded queries (if provided)
     queries: list[str] = [query_text]
-
-    try:
-        from llm.query_expander import expand_query
-        extra_phrases = expand_query(query_text)
-        if extra_phrases:
-            print(f"🧠 LLM generated {len(extra_phrases)} additional queries for search")
-            queries.extend(extra_phrases)
-    except Exception as llm_err:
-        print(f"⚠️ Query expansion via LLM impossible: {llm_err}")
+    
+    if expanded_queries:
+        queries.extend(expanded_queries)
 
     # 2) Launch search for each query and aggregate
     aggregated: dict[int, dict] = {}

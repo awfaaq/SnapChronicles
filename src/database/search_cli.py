@@ -31,11 +31,7 @@ from database.db_handler import (
     db_exists,
 )
 
-# Query expansion with local LLM (Ollama)
-try:
-    from llm.query_expander import expand_query
-except Exception as _qe_err:  # LLM not available – fallback silently
-    expand_query = None  # type: ignore
+# LLM query expansion will be imported dynamically when needed
 
 
 def format_timestamp(timestamp):
@@ -139,6 +135,70 @@ Tips:
     """)
 
 
+def choose_llm_provider():
+    """Ask user to choose between Groq (more power) or local Llama (more privacy)."""
+    print("🤖 Choose your LLM provider for query expansion:")
+    print()
+    print("1. 🌐 Groq API (More power)")
+    print("   - Faster and more capable language model")
+    print("   - Requires internet connection")
+    print("   - Requires API key (free tier available)")
+    print()
+    print("2. 🏠 Local Llama (More privacy)")
+    print("   - Runs entirely on your machine")
+    print("   - No internet required")
+    print("   - Requires Ollama to be installed")
+    print()
+    print("🔒 Privacy Note: In both cases, only your search query text is processed")
+    print("   by the LLM. Your captured screenshots and audio data never leave your device.")
+    print()
+    
+    while True:
+        try:
+            choice = input("Enter your choice (1 for Groq, 2 for Local, or 'skip' to disable query expansion): ").strip().lower()
+            
+            if choice in ['1', 'groq']:
+                # Check if Groq is available
+                try:
+                    from llm.query_expander import check_provider_availability
+                    is_available, error_msg = check_provider_availability("groq")
+                    if not is_available:
+                        print(f"❌ Groq not available: {error_msg}")
+                        print("Please set up Groq or choose local Llama instead.")
+                        continue
+                    print("✅ Groq API selected - query expansion enabled")
+                    return "groq"
+                except ImportError:
+                    print("❌ Query expansion module not available")
+                    return None
+                    
+            elif choice in ['2', 'local', 'llama', 'ollama']:
+                # Check if Ollama is available
+                try:
+                    from llm.query_expander import check_provider_availability
+                    is_available, error_msg = check_provider_availability("ollama")
+                    if not is_available:
+                        print(f"❌ Ollama not available: {error_msg}")
+                        print("Please install Ollama or choose Groq instead.")
+                        continue
+                    print("✅ Local Llama selected - query expansion enabled")
+                    return "ollama"
+                except ImportError:
+                    print("❌ Query expansion module not available")
+                    return None
+                    
+            elif choice in ['skip', 'none', 'disable', '']:
+                print("⚠️ Query expansion disabled - using basic search only")
+                return None
+                
+            else:
+                print("❌ Invalid choice. Please enter 1, 2, or 'skip'")
+                
+        except EOFError:
+            print("\n⚠️ Query expansion disabled - using basic search only")
+            return None
+
+
 def main():
     """Main CLI loop."""
     # Setup signal handler for Ctrl+C
@@ -156,6 +216,11 @@ def main():
     print("Search through your captured screenshots and audio transcriptions")
     print("using natural language queries powered by AI.")
     print()
+    
+    # Choose LLM provider
+    llm_provider = choose_llm_provider()
+    print()
+    
     print("💡 Type 'help' for commands, 'stats' for database info, or 'q' to quit")
     print()
     
@@ -192,23 +257,25 @@ def main():
                 print("⚠️ Please enter a search query or 'q' to quit")
                 continue
             
-            # Perform LLM-based expansion (optional)
-            expanded_phrases = []
-            if expand_query is not None:
-                try:
-                    expanded_phrases = expand_query(query, max_tokens=128)
-                except Exception as e:
-                    print(f"⚠️  Query expansion failed – continuing without it: {e}")
-
             # Log what we're about to search
             print(f"\n🧠 Searching for: '{query}'")
-            if expanded_phrases:
-                print("   🔎 Additional generated requests:")
-                for p in expanded_phrases:
-                    print(f"     • {p}")
             
-            # Run search (db handler now internally reuses expansion, but we pass original)
-            results = search_similar_events(query, top_k=6)
+            # Generate expanded queries if LLM provider is available
+            expanded_queries = []
+            if llm_provider:
+                try:
+                    from llm.query_expander import expand_query
+                    expanded_queries = expand_query(query, provider=llm_provider)
+                    if expanded_queries:
+                        print(f"🤖 AI generated {len(expanded_queries)} additional search queries:")
+                        for i, q in enumerate(expanded_queries, 1):
+                            print(f"   {i}. {q}")
+                        print()
+                except Exception as e:
+                    print(f"⚠️ Query expansion failed: {e}")
+            
+            # Run search with expanded queries
+            results = search_similar_events(query, top_k=6, expanded_queries=expanded_queries)
             display_results(results, query)
             
             print("-" * 80)
