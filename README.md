@@ -1,206 +1,110 @@
-# SnapChronicles
+***SnapChronicles
 
 Hackathon Qualcomm
 
-
-\# SnapChronicles
-
-
-\*\*Universal Edge OCR \& Audio Transcription Toolkit\*\*
-
-
+**Universal Edge OCR & Audio Transcription Toolkit**
 
 SnapChronicles is a lightweight Python toolkit for extracting clean, structured text from screenshots and audio on your local device. It is optimized for real-world scenarios—scientific articles, web pages, news, social platforms, and more—while keeping your data private (no cloud required unless you enable Groq summarization).
 
+---
 
+## Features
+
+* **Universal OCR (Optical Character Recognition)**
+
+  * Adapted for a wide range of content types: scientific publishers (arXiv, ScienceDirect, Springer), Wikipedia, news, e-commerce (Amazon, Apple), social/chat (Discord, YouTube), blogs (Medium, Substack), technical docs (GitHub), and more.
+  * Pattern-specific mode detection applies the best cropping and noise reduction for each content type, maximizing OCR accuracy.
+  * Batch processing supported.
+  * Outputs human-readable text, ready to copy/paste or archive.
+
+* **Speech-to-Text Transcription**
+
+  * High-quality audio transcription from files or speakers using open-source ASR (Automatic Speech Recognition).
+  * Edge-first: All transcription runs locally.
+  * Simple CLI usage.
+
+* **Structured Archival & Search**
+
+  * All extracted text and audio events are stored in a local SQLite database.
+  * Simple CLI interface to view and search events.
+  * Ready for semantic search with vectorization modules (see `vector_handler.py`).
+
+* **Optional LLM Summarization (Groq/Llama 3)**
+
+  * Plug-and-play integration for summarizing large text via Groq’s blazing-fast Llama API (if API key is provided).
+  * Summarization is **optional**; core features work fully offline.
 
 ---
 
-
-
-\##  Features
-
-
-
-\* \*\*Universal OCR (Optical Character Recognition)\*\*
-
-
-
-&nbsp; \* Adapted for a wide range of content types: scientific publishers (arXiv, ScienceDirect, Springer), Wikipedia, news, e-commerce (Amazon, Apple), social/chat (Discord, YouTube), blogs (Medium, Substack), technical docs (GitHub), and more.
-
-&nbsp; \* Pattern-specific mode detection applies the best cropping and noise reduction for each content type, maximizing OCR accuracy.
-
-&nbsp; \* Batch processing supported.
-
-&nbsp; \* Outputs human-readable text, ready to copy/paste or archive.
-
-
-
-\* \*\*Speech-to-Text Transcription\*\*
-
-
-
-&nbsp; \* High-quality audio transcription from files or speakers using open-source ASR (Automatic Speech Recognition).
-
-&nbsp; \* Edge-first: All transcription runs locally.
-
-&nbsp; \* Simple CLI usage.
-
-
-
-\* \*\*Structured Archival \& Search\*\*
-
-
-
-&nbsp; \* All extracted text and audio events are stored in a local SQLite database.
-
-&nbsp; \* Simple CLI interface to view and search events.
-
-&nbsp; \* Ready for semantic search with vectorization modules (see `vector\_handler.py`).
-
-
-
-\* \*\*Optional LLM Summarization (Groq/Llama 3)\*\*
-
-
-
-&nbsp; \* Plug-and-play integration for summarizing large text via Groq’s blazing-fast Llama API (if API key is provided).
-
-&nbsp; \* Summarization is \*\*optional\*\*; core features work fully offline.
-
-
-
----
-
-
-
-\## 📦 Installation
-
-
+## 📦 Installation
 
 ```bash
-
 git clone https://github.com/awfaaq/SnapChronicles.git
-
 cd SnapChronicles
-
 python -m venv .venv
-
 . .venv/Scripts/activate  # (Windows) or source .venv/bin/activate (Linux/Mac)
-
 pip install -r requirements.txt
-
 ```
 
-
-
-\* \*\*Tesseract\*\* is required for OCR (install from \[https://github.com/tesseract-ocr/tesseract](https://github.com/tesseract-ocr/tesseract)).
-
-\* For Groq API features, set your API key as an environment variable:
-
-&nbsp; `export GROQ\_API\_KEY="your\_api\_key"` (Linux/Mac) or `set GROQ\_API\_KEY=your\_api\_key` (Windows).
-
-
+* **Tesseract** is required for OCR (install from [https://github.com/tesseract-ocr/tesseract](https://github.com/tesseract-ocr/tesseract)).
+* For Groq API features, set your API key as an environment variable:
+  `export GROQ_API_KEY="your_api_key"` (Linux/Mac) or `set GROQ_API_KEY=your_api_key` (Windows).
 
 ---
 
+## Usage
 
-
-\##  Usage
-
-
-
-\*\*OCR from Screenshot\*\*
-
-
+**OCR from Screenshot**
 
 ```bash
-
-python capture\_screen\_text\_in\_continue.py path/to/screenshot.png
-
+python capture_screen_text_in_continue.py path/to/screenshot.png
 ```
 
+* Mode is auto-detected (arXiv, ScienceDirect, YouTube, Discord, Wikipedia, etc.).
 
+* Clean text is output to terminal and stored in the database.
 
-\* Mode is auto-detected (arXiv, ScienceDirect, YouTube, Discord, Wikipedia, etc.).
+* Transcribes and stores the audio as a text event.
 
-\* Clean text is output to terminal and stored in the database.
-
-
-
-\* Transcribes and stores the audio as a text event.
-
-
-
-\*\*Optional: LLM Summarization via Groq\*\*
-
-
-\##  Limitations
-
-
-
-\* \*\*Text OCR only:\*\* Does not extract tables, images, or mathematical formulas as LaTeX.
-
-\* \*\*Layout-dependent:\*\* Extreme or very noisy layouts may require custom tuning.
-
-\* \*\*Speech-to-text:\*\* Best quality with clear audio; no language identification or diarization yet.
-
-\* \*\*Groq API is optional:\*\* Summarization works only if a valid Groq API key is provided.
-
-
+**Optional: LLM Summarization via Groq**
 
 ---
 
+## Limitations
 
-
-\## Tech Stack
-
-
-
-\* \*\*Python 3.10+\*\*
-
-\* \*\*Tesseract OCR\*\*
-
-\* \*\*Open-source ASR (Whisper or similar)\*\*
-
-\* \*\*Groq API / Llama 3 (optional for summarization)\*\*
-
-\* \*\*SQLite for local archiving\*\*
-
-
+* **Text OCR only:** Does not extract tables, images, or mathematical formulas as LaTeX.
+* **Layout-dependent:** Extreme or very noisy layouts may require custom tuning.
+* **Speech-to-text:** Best quality with clear audio; no language identification or diarization yet.
+* **Groq API is optional:** Summarization works only if a valid Groq API key is provided.
 
 ---
 
+## Tech Stack
 
-\## Privacy \& Edge-First
-
-
-
-\* All OCR and transcription features run fully on your device by default.
-
-\* No data leaves your computer unless you explicitly enable Groq summarization.
-
-
+* **Python 3.10+**
+* **Tesseract OCR**
+* **Open-source ASR (Whisper or similar)**
+* **Groq API / Llama 3 (optional for summarization)**
+* **SQLite for local archiving**
 
 ---
 
+## Privacy & Edge-First
 
-\## Credits
-
-
-
-Developed by \[Daniel Ashraful](https://github.com/awfaaq), \[Mohammad-Habib Javaid](https://github.com/mhjd),\[Harith Proietti](https://github.com/HarithProietti)
+* All OCR and transcription features run fully on your device by default.
+* No data leaves your computer unless you explicitly enable Groq summarization.
 
 ---
 
+## Credits
 
-\*\*SnapChronicles empowers you to capture, extract, and organize information from the digital world—simply, locally, and securely.\*\*
-
-
+Developed by [Daniel Ashraful](https://github.com/awfaaq), [Mohammad-Habib Javaid](https://github.com/mhjd), [Harith Proietti](https://github.com/HarithProietti)
 
 ---
 
+**SnapChronicles empowers you to capture, extract, and organize information from the digital world—simply, locally, and securely.**
 
+---
 
 
 
