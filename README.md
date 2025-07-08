@@ -1,4 +1,4 @@
-***SnapChronicles
+**SnapChronicles
 
 Hackathon Qualcomm
 
