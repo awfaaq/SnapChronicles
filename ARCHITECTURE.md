@@ -5,6 +5,7 @@ Role: project entrypoint for capture, OCR/ASR processing, semantic search, and d
 
 Files:
 - `AGENTS.md`: local operating rules for reliability, observability, and architecture documentation updates.
+- `Makefile`: central command runner for setup, execution, tests, lint/format, and cleanup tasks.
 - `README.md`: product overview, setup, and user-facing usage notes.
 - `requirements.txt`: pinned Python dependencies (OCR, audio capture, Whisper, FAISS, sentence-transformers, etc.).
 - `search.py`: root wrapper that loads `src/` in `sys.path` and starts the interactive semantic search CLI (`src/database/search_cli.py`).
