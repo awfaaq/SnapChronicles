@@ -45,3 +45,7 @@ When you create a new script, or change the API of a script, edit the Makefile.
 
 When you delete a script, remove it from the Makefile.
 
+Never commit `Makefile` to Git.
+
+If `Makefile` does not exist, create it before running project workflows.
+
